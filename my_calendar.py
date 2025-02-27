@@ -11,7 +11,26 @@ from googleapiclient.discovery import build
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 TIMEZONE = "Europe/Rome"  # Timezone set to Rome
 
-# Define the weekly schedule with English categories.
+# Canonical mapping: both Italian and English map to the canonical English value.
+canonical_categories = {
+    "Training": "Training",
+    "Allenamento": "Training",
+    "Personal": "Personal",
+    "Personale": "Personal",
+    "Work": "Work",
+    "Lavoro": "Work",
+    "Study": "Study",
+    "Studio": "Study",
+    "Upskilling": "Upskilling",
+    "Networking": "Networking"
+}
+
+
+def normalize_category(cat):
+    return canonical_categories.get(cat, cat)
+
+
+# Define the weekly schedule (using English category names).
 schedule = {
     "Monday": [
         {"start": "05:30", "end": "08:00", "category": "Training"},
@@ -71,7 +90,7 @@ schedule = {
     ]
 }
 
-# Mapping of categories to Google Calendar color IDs (strings from "1" to "11")
+# Mapping of canonical categories to Google Calendar color IDs.
 color_mapping = {
     "Training": "11",   # Tomato (red)
     "Personal": "3",    # Grape (purple)
@@ -83,17 +102,9 @@ color_mapping = {
 
 
 def get_next_weekday(day_name: str) -> datetime.date:
-    """
-    Returns the date of the next occurrence of the specified weekday (e.g., 'Monday').
-    """
     weekday_map = {
-        "Monday": 0,
-        "Tuesday": 1,
-        "Wednesday": 2,
-        "Thursday": 3,
-        "Friday": 4,
-        "Saturday": 5,
-        "Sunday": 6
+        "Monday": 0, "Tuesday": 1, "Wednesday": 2,
+        "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6
     }
     today = datetime.date.today()
     target = weekday_map[day_name]
@@ -104,30 +115,67 @@ def get_next_weekday(day_name: str) -> datetime.date:
 
 
 def get_or_create_calendar(service):
-    """
-    Checks for an existing calendar with the summary "Weekly Schedule".
-    If found, returns its calendar ID; otherwise, creates a new calendar.
-    """
     calendar_list = service.calendarList().list().execute()
     for calendar in calendar_list.get('items', []):
         if calendar.get('summary') == "Weekly Schedule":
             print("Using existing 'Weekly Schedule' calendar with ID:",
                   calendar['id'])
             return calendar['id']
-    # Create new calendar if not found.
     calendar_body = {'summary': 'Weekly Schedule', 'timeZone': TIMEZONE}
     created_calendar = service.calendars().insert(body=calendar_body).execute()
     print("Created new calendar with ID:", created_calendar['id'])
     return created_calendar['id']
 
 
+def find_existing_event(service, calendar_id, event_key, scheduled_day, scheduled_start, normalized):
+    # Try extended property lookup.
+    query = service.events().list(
+        calendarId=calendar_id,
+        privateExtendedProperty=f"weeklyScheduleId={event_key}",
+        showDeleted=False,
+        singleEvents=False
+    ).execute()
+    if query.get('items'):
+        return query.get('items')[0]
+
+    # Search within a time window for a recurring event matching the day, start time, and normalized summary.
+    now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
+    time_min = (now - datetime.timedelta(days=7)).isoformat()
+    time_max = (now + datetime.timedelta(days=14)).isoformat()
+    events_in_window = service.events().list(
+        calendarId=calendar_id,
+        timeMin=time_min,
+        timeMax=time_max,
+        showDeleted=False,
+        singleEvents=False
+    ).execute()
+    for event in events_in_window.get('items', []):
+        if 'recurrence' not in event:
+            continue
+        if not any("RRULE" in rec for rec in event['recurrence']):
+            continue
+        if 'dateTime' not in event.get('start', {}):
+            continue
+        try:
+            event_start = datetime.datetime.fromisoformat(
+                event['start']['dateTime'])
+        except Exception:
+            continue
+        if event_start.strftime("%A") != scheduled_day:
+            continue
+        if event_start.time().strftime("%H:%M") != scheduled_start:
+            continue
+        if normalize_category(event.get('summary', '')) != normalized:
+            continue
+        return event
+    return None
+
+
 def main():
     creds = None
-    # Load saved credentials if they exist.
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    # If there are no valid credentials available, prompt the user to log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -135,21 +183,19 @@ def main():
             flow = InstalledAppFlow.from_client_secrets_file(
                 'credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
-        # Save the credentials for future runs.
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
 
     service = build('calendar', 'v3', credentials=creds)
     calendar_id = get_or_create_calendar(service)
 
-    # For each day, create or update recurring weekly events.
+    # Process each day in the schedule.
     for day, events in schedule.items():
         event_date = get_next_weekday(day)
         for ev in events:
-            # Generate a unique key for the event.
-            event_key = f"{day}_{ev['start']}_{ev['end']}_{ev['category']}"
+            normalized = normalize_category(ev['category'])
+            event_key = f"{day}_{ev['start']}_{ev['end']}_{normalized}"
 
-            # Parse the start and end times.
             start_hour, start_minute = map(int, ev['start'].split(':'))
             end_hour, end_minute = map(int, ev['end'].split(':'))
             start_dt = datetime.datetime.combine(
@@ -162,19 +208,27 @@ def main():
                 datetime.time(end_hour, end_minute, tzinfo=ZoneInfo(TIMEZONE))
             )
 
-            # Check if an event with the same unique key already exists.
-            query = service.events().list(
-                calendarId=calendar_id,
-                privateExtendedProperty=f"weeklyScheduleId={event_key}"
-            ).execute()
-
-            if query.get('items'):
-                print(
-                    f"Event '{event_key}' already exists. Skipping creation.")
-                continue  # Skip creating this event
+            existing_event = find_existing_event(
+                service, calendar_id, event_key, day, ev['start'], normalized)
+            if existing_event:
+                update_body = {
+                    'summary': normalized,
+                    'extendedProperties': {
+                        'private': {
+                            'weeklyScheduleId': event_key
+                        }
+                    }
+                }
+                service.events().patch(
+                    calendarId=calendar_id,
+                    eventId=existing_event['id'],
+                    body=update_body
+                ).execute()
+                print(f"Event '{event_key}' exists. Updated existing event.")
+                continue
 
             event_body = {
-                'summary': ev['category'],
+                'summary': normalized,
                 'start': {
                     'dateTime': start_dt.isoformat(),
                     'timeZone': TIMEZONE,
@@ -183,17 +237,14 @@ def main():
                     'dateTime': end_dt.isoformat(),
                     'timeZone': TIMEZONE,
                 },
-                # Set the event to recur weekly.
                 'recurrence': ['RRULE:FREQ=WEEKLY'],
-                # Store the unique key in the event's private extended properties.
                 'extendedProperties': {
                     'private': {
                         'weeklyScheduleId': event_key
                     }
                 }
             }
-            # Add a color based on the event category.
-            color = color_mapping.get(ev['category'])
+            color = color_mapping.get(normalized)
             if color:
                 event_body['colorId'] = color
 
