@@ -7,74 +7,86 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
-# If modifying these scopes, delete the token.pickle file.
+# If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-TIMEZONE = "Europe/Rome"  # Set your desired timezone
+TIMEZONE = "Europe/Rome"  # Timezone set to Rome
 
-# Define the weekly schedule: for each day (in English) a list of events.
-# Each event is defined by a start time, end time, and category (used as the event summary).
+# Define the weekly schedule: each day (in English) has a list of events.
+# Each event is defined by start time, end time, and category (used as the event summary)
 schedule = {
     "Monday": [
-        {"start": "05:30", "end": "08:00", "category": "Workout"},
-        {"start": "08:00", "end": "09:00", "category": "Personal"},
-        {"start": "09:00", "end": "13:00", "category": "Work"},
-        {"start": "13:00", "end": "14:00", "category": "Personal"},
-        {"start": "14:00", "end": "18:00", "category": "Work"},
-        {"start": "18:00", "end": "19:30", "category": "Study"},
+        {"start": "05:30", "end": "08:00", "category": "Allenamento"},
+        {"start": "08:00", "end": "09:00", "category": "Personale"},
+        {"start": "09:00", "end": "13:00", "category": "Lavoro"},
+        {"start": "13:00", "end": "14:00", "category": "Personale"},
+        {"start": "14:00", "end": "18:00", "category": "Lavoro"},
+        {"start": "18:00", "end": "19:30", "category": "Studio"},
         {"start": "19:30", "end": "20:30", "category": "Networking"},
     ],
     "Tuesday": [
-        {"start": "05:30", "end": "08:00", "category": "Workout"},
-        {"start": "08:00", "end": "09:00", "category": "Personal"},
-        {"start": "09:00", "end": "13:00", "category": "Work"},
-        {"start": "13:00", "end": "14:00", "category": "Personal"},
-        {"start": "14:00", "end": "18:00", "category": "Work"},
+        {"start": "05:30", "end": "08:00", "category": "Allenamento"},
+        {"start": "08:00", "end": "09:00", "category": "Personale"},
+        {"start": "09:00", "end": "13:00", "category": "Lavoro"},
+        {"start": "13:00", "end": "14:00", "category": "Personale"},
+        {"start": "14:00", "end": "18:00", "category": "Lavoro"},
         {"start": "18:00", "end": "19:30", "category": "Upskilling"},
         {"start": "19:30", "end": "20:30", "category": "Networking"},
     ],
     "Wednesday": [
-        {"start": "05:30", "end": "08:00", "category": "Workout"},
-        {"start": "08:00", "end": "09:00", "category": "Personal"},
-        {"start": "09:00", "end": "13:00", "category": "Work"},
-        {"start": "13:00", "end": "14:00", "category": "Personal"},
-        {"start": "14:00", "end": "18:00", "category": "Work"},
+        {"start": "05:30", "end": "08:00", "category": "Allenamento"},
+        {"start": "08:00", "end": "09:00", "category": "Personale"},
+        {"start": "09:00", "end": "13:00", "category": "Lavoro"},
+        {"start": "13:00", "end": "14:00", "category": "Personale"},
+        {"start": "14:00", "end": "18:00", "category": "Lavoro"},
         {"start": "18:00", "end": "19:30", "category": "Upskilling"},
         {"start": "19:30", "end": "20:30", "category": "Networking"},
     ],
     "Thursday": [
-        {"start": "05:30", "end": "08:00", "category": "Workout"},
-        {"start": "08:00", "end": "09:00", "category": "Personal"},
-        {"start": "09:00", "end": "13:00", "category": "Work"},
-        {"start": "13:00", "end": "14:00", "category": "Personal"},
-        {"start": "14:00", "end": "18:00", "category": "Work"},
-        {"start": "18:00", "end": "19:30", "category": "Study"},
+        {"start": "05:30", "end": "08:00", "category": "Allenamento"},
+        {"start": "08:00", "end": "09:00", "category": "Personale"},
+        {"start": "09:00", "end": "13:00", "category": "Lavoro"},
+        {"start": "13:00", "end": "14:00", "category": "Personale"},
+        {"start": "14:00", "end": "18:00", "category": "Lavoro"},
+        {"start": "18:00", "end": "19:30", "category": "Studio"},
         {"start": "19:30", "end": "20:30", "category": "Networking"},
     ],
     "Friday": [
-        {"start": "05:30", "end": "08:00", "category": "Workout"},
-        {"start": "08:00", "end": "09:00", "category": "Personal"},
-        {"start": "09:00", "end": "13:00", "category": "Work"},
-        {"start": "13:00", "end": "14:00", "category": "Personal"},
-        {"start": "14:00", "end": "18:00", "category": "Work"},
+        {"start": "05:30", "end": "08:00", "category": "Allenamento"},
+        {"start": "08:00", "end": "09:00", "category": "Personale"},
+        {"start": "09:00", "end": "13:00", "category": "Lavoro"},
+        {"start": "13:00", "end": "14:00", "category": "Personale"},
+        {"start": "14:00", "end": "18:00", "category": "Lavoro"},
         {"start": "18:00", "end": "19:30", "category": "Upskilling"},
         {"start": "19:30", "end": "20:30", "category": "Networking"},
     ],
     "Saturday": [
-        {"start": "06:00", "end": "10:00", "category": "Workout"},
-        {"start": "10:00", "end": "12:00", "category": "Study"},
-        {"start": "12:00", "end": "14:00", "category": "Personal"},
+        {"start": "06:00", "end": "10:00", "category": "Allenamento"},
+        {"start": "10:00", "end": "12:00", "category": "Studio"},
+        {"start": "12:00", "end": "14:00", "category": "Personale"},
         {"start": "14:00", "end": "16:00", "category": "Upskilling"},
     ],
     "Sunday": [
-        {"start": "07:00", "end": "09:00", "category": "Workout"},
-        {"start": "09:00", "end": "10:00", "category": "Workout"},
-        {"start": "10:00", "end": "11:00", "category": "Personal"},
+        {"start": "07:00", "end": "09:00", "category": "Allenamento"},
+        {"start": "09:00", "end": "10:00", "category": "Allenamento"},
+        {"start": "10:00", "end": "11:00", "category": "Personale"},
     ]
+}
+
+# Mapping of categories to Google Calendar color IDs (as strings "1" to "11")
+color_mapping = {
+    "Allenamento": "11",  # Tomato (red)
+    "Personale": "3",     # Grape (purple)
+    "Lavoro": "9",        # Blueberry (blue)
+    "Studio": "2",        # Sage (green)
+    "Upskilling": "5",    # Banana (yellow)
+    "Networking": "6"     # Tangerine (orange)
 }
 
 
 def get_next_weekday(day_name: str) -> datetime.date:
-    """Return the date of the next occurrence of the specified weekday (e.g., 'Monday')."""
+    """
+    Returns the date of the next occurrence of the specified weekday (e.g., 'Monday').
+    """
     weekday_map = {
         "Monday": 0,
         "Tuesday": 1,
@@ -94,11 +106,11 @@ def get_next_weekday(day_name: str) -> datetime.date:
 
 def main():
     creds = None
-    # Load saved credentials if available
+    # Load saved credentials if they exist.
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    # If no valid credentials are available, start the OAuth2 flow.
+    # If there are no valid credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -112,7 +124,7 @@ def main():
 
     service = build('calendar', 'v3', credentials=creds)
 
-    # Create a new calendar for the weekly schedule
+    # Create a new calendar for the weekly schedule.
     calendar_body = {
         'summary': 'Weekly Schedule',
         'timeZone': TIMEZONE
@@ -121,11 +133,11 @@ def main():
     calendar_id = created_calendar['id']
     print("Created new calendar with ID:", calendar_id)
 
-    # For each day, create recurring weekly events
+    # For each day, create recurring weekly events.
     for day, events in schedule.items():
         event_date = get_next_weekday(day)
         for ev in events:
-            # Parse the start and end times
+            # Parse the start and end times.
             start_hour, start_minute = map(int, ev['start'].split(':'))
             end_hour, end_minute = map(int, ev['end'].split(':'))
             start_dt = datetime.datetime.combine(
@@ -147,11 +159,16 @@ def main():
                     'dateTime': end_dt.isoformat(),
                     'timeZone': TIMEZONE,
                 },
-                # Set the event to recur weekly
+                # Set the event to recur weekly.
                 'recurrence': [
                     'RRULE:FREQ=WEEKLY'
                 ]
             }
+            # Add a color based on the event category.
+            color = color_mapping.get(ev['category'])
+            if color:
+                event_body['colorId'] = color
+
             created_event = service.events().insert(
                 calendarId=calendar_id, body=event_body).execute()
             print(
